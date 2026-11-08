@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PS5 连发设置 · v{{TURBO_VERSION}}</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#10131b;color:#f3f5fb}*{box-sizing:border-box}body{margin:0;padding:30px 18px}main{max-width:540px;margin:auto}small{color:#8ca0c3;letter-spacing:.12em}h1{font-size:30px;margin:10px 0}p{color:#b7c0d1;line-height:1.7}.panel{background:#1b2130;border:1px solid #30394c;border-radius:18px;padding:20px;margin:20px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.key{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#252e40;padding:16px;border-radius:12px;font-size:22px}.key:has(input:checked){outline:2px solid #78b6ff;background:#233d60}input[type=checkbox]{width:23px;height:23px;accent-color:#78b6ff}.row{display:flex;align-items:center;justify-content:space-between;gap:12px}select,button{font:inherit;border-radius:10px;padding:12px;border:1px solid #52617c;background:#252e40;color:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:wait}.save{width:100%;background:#8bc4ff;color:#11223b;border:0;font-weight:700;margin-top:18px;padding:16px}.status{font-size:14px;color:#c6d7ed;margin:16px 0}.note{font-size:13px}.clear{font-size:13px;padding:7px 10px}#msg{line-height:1.5;color:#a9e7c3}#msg:empty{display:none}h2{font-size:17px;margin:0}footer{font-size:12px;color:#8ca0c3}
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}.page-head .status{margin:0}footer{margin-top:16px}
+</style></head><body><main>
+<header class="page-head"><small>PS5 TURBO · {{TURBO_VERSION}}</small><div id="status" class="status" role="status">正在连接…</div></header>
+<form id="form"><fieldset id="controls" disabled style="border:0;padding:0;margin:0">
+<section class="panel"><div class="row" style="margin-bottom:18px"><h2>连发按键</h2><button class="clear" id="clear" type="button">全部取消</button></div><div class="grid">
+<label class="key">×<input type="checkbox" value="16384" aria-label="叉键连发"></label><label class="key">○<input type="checkbox" value="8192" aria-label="圆圈键连发"></label>
+<label class="key">□<input type="checkbox" value="32768" aria-label="方块键连发"></label><label class="key">△<input type="checkbox" value="4096" aria-label="三角键连发"></label>
+<label class="key">L1<input type="checkbox" value="1024" aria-label="L1连发"></label><label class="key">R1<input type="checkbox" value="2048" aria-label="R1连发"></label>
+<label class="key">L2<input type="checkbox" value="256" aria-label="L2连发"></label><label class="key">R2<input type="checkbox" value="512" aria-label="R2连发"></label>
+</div></section><section class="panel"><label class="row"><span>允许连发</span><input id="enabled" type="checkbox"></label><label class="row" style="margin-top:16px"><span>连发速度</span><span>20 次/秒</span><input type="hidden" id="speed" value="25000"></label></section>
+<section class="panel"><h2 style="margin-bottom:18px">手柄快捷开关</h2>
+<label class="row shortcut"><span>L1＋R1＋十字键↓</span><input type="checkbox" value="1" aria-label="L1加R1加十字键下快捷开关"></label>
+<label class="row shortcut" style="margin-top:16px"><span>长按 L3＋R3 两秒</span><input type="checkbox" value="2" aria-label="长按L3加R3两秒快捷开关"></label>
+</section>
+<button class="save" id="save" type="submit">保存并应用</button></fieldset><p id="msg" role="status" aria-live="polite"></p></form>
+<footer>snkwz</footer>
+</main><script>
+const $=s=>document.querySelector(s), keys=()=>[...document.querySelectorAll('.key input')];const shortcutKeys=()=>[...document.querySelectorAll('.shortcut input')];const pageVersion='{{TURBO_VERSION}}';let token='',ready=false;
+async function state(){const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)throw Error('连接失败');return r.json()}
+function status(s){$('#status').textContent='插件运行中'}
+async function init(){try{const s=await state();if(s.version!==pageVersion){location.reload();return}token=s.token;keys().forEach(k=>k.checked=!!(s.mask&Number(k.value)));$('#enabled').checked=!!s.enabled;shortcutKeys().forEach(k=>k.checked=!!(s.shortcuts&Number(k.value)));
+status(s);ready=true;$('#controls').disabled=false;$('#msg').textContent=''}catch(e){$('#status').textContent='连接失败，请刷新重试。'}}
+$('#clear').onclick=()=>keys().forEach(k=>k.checked=false);
+$('#form').onsubmit=async e=>{e.preventDefault();if(!ready)return;let mask=0;keys().forEach(k=>{if(k.checked)mask|=Number(k.value)});let shortcuts=0;shortcutKeys().forEach(k=>{if(k.checked)shortcuts|=Number(k.value)});$('#save').disabled=true;$('#msg').textContent='正在保存…';try{const body=new URLSearchParams({enabled:$('#enabled').checked?'1':'0',mask:String(mask),half_us:$('#speed').value,shortcuts:String(shortcuts),token});const r=await fetch('/api/settings',{method:'POST',body});if(!r.ok)throw Error(await r.text());$('#msg').textContent=!mask?'连发已关闭':!$('#enabled').checked?'连发已暂停':'已保存'}catch(e){$('#msg').textContent='未能保存：'+e.message}finally{$('#save').disabled=false}};
+setInterval(async()=>{if(!ready)return;try{const s=await state();if(s.version!==pageVersion||s.token!==token){ready=false;$('#controls').disabled=true;$('#status').textContent='正在更新页面…';location.reload();return}status(s)}catch(e){$('#status').textContent='连接已断开'}},2500);init();
+</script></body></html>
